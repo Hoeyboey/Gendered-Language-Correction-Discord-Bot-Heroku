@@ -3,7 +3,7 @@ import asyncio
 
 client = discord.Client()
 
-blacklist = ['Dude', 'Dudes', 'Guys', 'dude', 'dudes', 'guys']
+blacklist = ['Dude', 'Dudes', 'Guys']
 
 async def public_vague_callout(message, client):
 	print(message.content)
@@ -24,9 +24,9 @@ def check2(msg):
 
 async def blacklisting(client, serverOwner):
 	newMessage = await client.wait_for_message(author=serverOwner, check=check)
-	if newMessage.content == 'Y':
+	if newMessage.content.title() == 'Y':
 		await client.send_message(serverOwner, 'Alright! Please type the word you want to add to the blacklist.')
-		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2)
+		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2).title()
 		if addToBlacklist not in blacklist:
 			blacklist.append(addToBlacklist)
 		else:
@@ -45,9 +45,10 @@ async def on_ready():
 @client.event
 async def on_message(message):
 	if message.author.id != client.user.id:
-		if message.content.title() in blacklist:
-			print(message.author.id)
-			await public_vague_callout(message, client)
+		for x in range(0, len(blacklist)):
+			if blacklist[x] in message.content.title():
+				print(message.author.id)
+				await public_vague_callout(message, client)
 
 @client.event
 async def on_server_join(server):
