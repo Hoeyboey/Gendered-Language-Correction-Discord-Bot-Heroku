@@ -1,13 +1,28 @@
 import discord
 import asyncio
+import sys
+import json
 
 client = discord.Client()
 
-blacklist = ['Dude', 'Dudes', 'Guys']
+blacklists = {}
+
+blacklist = ['DUDE', 'DUDES', 'GUYS']
+serverJoinMessages = ['I\'ve just been invited to your server! Hi! I just need to run through some things with you!', 'First of all, we need to decide what words you want me to call out. By default, we include "dude" and "guys", but you\'re able to add any more if you want.', 'Do you want to add any more blacklisted words? Y/N']
 
 async def public_vague_callout(message, client):
-	print(message.content)
 	await client.send_message(message.channel, 'Please don\'t say dude or guys!')
+
+def writeBlacklistsToFile():
+	fullCurrentBlacklists = json.dumps(blacklists)
+	with open('blacklists.json', 'w') as f:
+		f.write(fullCurrentBlacklists)
+
+def readExistingBlacklists():
+	with open('blacklists.json', 'r') as f:
+		unserializedBlacklists = f.read()
+	global blacklists
+	blacklists = json.loads(unserializedBlacklists)
 
 def check(msg):
 	if msg.channel.is_private:
@@ -22,17 +37,19 @@ def check2(msg):
 	else:
 		return False
 
-async def blacklisting(client, serverOwner):
+async def blacklisting(client, serverOwner, serverId):
 	newMessage = await client.wait_for_message(author=serverOwner, check=check)
-	if newMessage.content.title() == 'Y':
+	if newMessage.content.upper() == 'Y':
 		await client.send_message(serverOwner, 'Alright! Please type the word you want to add to the blacklist.')
-		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2).title()
-		if addToBlacklist not in blacklist:
-			blacklist.append(addToBlacklist)
+		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2)
+		addToBlacklistStr = addToBlacklist.content.upper()
+		if addToBlacklistStr not in blacklists[serverId]:
+			blacklists[serverId].append(addToBlacklistStr)
+			writeBlacklistsToFile()
 		else:
 			await client.send_message(serverOwner, 'This word is already in the blacklist!')
 		await client.send_message(serverOwner, 'Okay! Want to add any more? Y/N')
-		await blacklisting(client, serverOwner)
+		await blacklisting(client, serverOwner, serverId)
 	else:
 		await client.send_message(serverOwner, 'We\'re all done then! If you want to add something new to the list, DM me with \'!help\'!')
 	
@@ -40,24 +57,38 @@ async def blacklisting(client, serverOwner):
 @client.event
 async def on_ready():
 	print('I\'m working!')
-	print(client.user.id)
+	readExistingBlacklists()
+	serversCurrentlyJoined = client.servers
+	for x in serversCurrentlyJoined:
+		print(x.id)
+		if x.id not in blacklists.keys():
+			print('Intro method')
+			serverOwner = x.owner
+			serverId = x.id
+			blacklists[serverId] = list(blacklist)
+			writeBlacklistsToFile()
+			for message in serverJoinMessages:
+				await client.send_message(serverOwner, message)
+			await blacklisting(client, serverOwner, serverId)
 
 @client.event
 async def on_message(message):
-	if message.author.id != client.user.id:
-		for x in range(0, len(blacklist)):
-			if blacklist[x] in message.content.title():
-				print(message.author.id)
-				await public_vague_callout(message, client)
+	if message.server != None:
+		if message.author.id != client.user.id:
+			for word in blacklists[str(message.server.id)]:
+				if word in message.content.upper():
+					await public_vague_callout(message, client)
 
 @client.event
 async def on_server_join(server):
+	serverId = str(server.id)
+	blacklists[serverId] = list(blacklist)
+	writeBlacklistsToFile()
 	serverOwner = server.owner 
-	await client.send_message(serverOwner, 'I\'ve just been invited to your server! Hi! I just need to run through some things with you!')
-	await client.send_message(serverOwner, 'First of all, we need to decide what words you want me to call out. By default, we include "dude" and "guys", but you\'re able to add any more if you want.')
-	await client.send_message(serverOwner, 'Do you want to add any more blacklisted words? Y/N')
-	await blacklisting(client, serverOwner)
+	for message in serverJoinMessages:
+		await client.send_message(serverOwner, message)
+	await blacklisting(client, serverOwner, serverId)
 
-client.run('TOKEN')
+client.run(sys.argv[1])
 
-# The actual token has been replaced so you can't do anything jammy with my bot. I see you.
+# The actual token must be put as an argument so you can't do anything jammy with my bot. I see you.
