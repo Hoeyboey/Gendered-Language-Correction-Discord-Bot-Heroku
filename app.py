@@ -17,11 +17,28 @@ serverJoinMessages = ['I\'ve just been invited to your server! Hi! I just need t
 
 # The callout for when someone says a blacklisted word. Currently placeholder, custom responses coming SOON.
 async def publicVagueCallout(message, client):
-	await client.send_message(message.channel, 'Please don\'t say dude or guys!')
+	await client.send_message(message.channel, 'Gendered language sucks and alienates people, or worse. Please don\'t use it!')
 
 async def viewServerBlacklist(client, message):
 	currentBlacklist = blacklists[message.server.id]
 	await client.send_message(message.channel, 'The blacklist for this server is: {}'.format(currentBlacklist[0]))
+
+async def publiclySpecifyItemToRemoveFromBlacklist(client, message):
+	await client.send_message(message.server, 'Alright! Please type the word you want to add to the blacklist.')
+	addToBlacklist = await client.wait_for_message(author=message.author)
+	addToBlacklistStr = addToBlacklist.content.upper()
+	if addToBlacklistStr not in blacklists[message.server.id][0]:
+		blacklists[message.server.id][0].append(addToBlacklistStr)
+		writeBlacklistsToFile()
+		await client.send_message(message.server, 'Okay! Want to add any more? Y/N')
+		newMessage = await client.wait_for_message(author=message.author, check=checkPublicYN)
+		if newMessage == 'Y':
+			await publiclySpecifyItemToRemoveFromBlacklist(client, message)
+		else: 
+			await client.send_message(message.server, 'Alright! Remember you can call what I can do with \'!help\'')
+	else:
+		await client.send_message(message.server, 'This word is already in the blacklist!')
+	
 
 async def removeItemFromBlacklist(client, message):
 	messageAuthor = message.author
@@ -31,14 +48,21 @@ async def removeItemFromBlacklist(client, message):
 		messageToRemove = await client.wait_for_message(author=serverOwner)
 		messageToRemoveStr = messageToRemove.content.upper()
 		print(messageToRemoveStr)
-		currentBlacklist = blacklists[message.server.id]
-		if messageToRemoveStr in currentBlacklist[0]:
-			blacklists[serverId].remove(messageToRemoveStr)
+		if messageToRemoveStr in blacklists[message.server.id][0]:
+			blacklists[message.server.id][0].remove(messageToRemoveStr)
 			await client.send_message(message.channel, 'That word has now been removed!')
 		else:
 			await client.send_message(message.channel, 'Hmm. I couldn\'t find that one in your blacklist!')
 	else:
-		await client send_message(message.channel, 'Only the owner of the server can remove words from the blacklist!')
+		await client.send_message(message.channel, 'Only the owner of the server can remove words from the blacklist!')
+
+async def addItemToBlacklist(client, message):
+	messageAuthor = message.author
+	serverOwner = message.server.owner
+	if serverOwner == messageAuthor:
+		await publiclySpecifyItemToRemoveFromBlacklist(client, message)
+	else:
+		await client.send_message(message.channel, 'Only the owner of the server can add words to the blacklist!')
 
 #This updates the blacklists.json file whenever it is updated - this retains the blacklists between the bot turning off and on again
 def writeBlacklistsToFile():
@@ -61,6 +85,12 @@ def check(msg):
 		else:
 			return False
 
+def checkPublicYN(msg):
+	if msg.content == 'Y' or msg.content == 'N':
+		return True
+	else:
+		return False
+
 # AN EVEN WORSE NAME, just checked if your message was sent in a private channel, i.e. DM'd the bot
 def check2(msg):
 	if msg.channel.is_private:
@@ -75,8 +105,7 @@ async def blacklisting(client, serverOwner, serverId):
 		await client.send_message(serverOwner, 'Alright! Please type the word you want to add to the blacklist.')
 		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2)
 		addToBlacklistStr = addToBlacklist.content.upper()
-		currentBlacklist = blacklists[serverId]
-		if addToBlacklistStr not in currentBlacklist[0]:
+		if addToBlacklistStr not in blacklists[message.server.id][0]:
 			blacklists[serverId].append(addToBlacklistStr)
 			writeBlacklistsToFile()
 		else:
@@ -111,13 +140,16 @@ async def on_message(message):
 	if message.server != None:
 		if message.author.id != client.user.id:
 			currentBlacklist = blacklists[str(message.server.id)]
-			for word in currentBlacklist[0]:
+			for word in blacklists[message.server.id][0]:
 				if word in message.content.upper():
 					await publicVagueCallout(message, client)
 			if message.content == '!remove':
 				await removeItemFromBlacklist(client, message)
-			elif message.content == '!viewblacklist':
+			elif message.content == '!view':
 				await viewServerBlacklist(client, message)
+			elif message.content == '!add':
+				await addItemToBlacklist(client, message)
+
 	else:
 		if message.content == '!remove':
 			await client.send_message(message.channel, 'You can\'t do this in DMs! Please type \'!remove\' into the server you want to remove a blacklisted word from!')
