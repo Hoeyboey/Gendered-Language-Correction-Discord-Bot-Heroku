@@ -23,21 +23,26 @@ async def viewServerBlacklist(client, message):
 	currentBlacklist = blacklists[message.server.id]
 	await client.send_message(message.channel, 'The blacklist for this server is: {}'.format(currentBlacklist[0]))
 
-async def publiclySpecifyItemToRemoveFromBlacklist(client, message):
-	await client.send_message(message.server, 'Alright! Please type the word you want to add to the blacklist.')
-	addToBlacklist = await client.wait_for_message(author=message.author)
-	addToBlacklistStr = addToBlacklist.content.upper()
-	if addToBlacklistStr not in blacklists[message.server.id][0]:
-		blacklists[message.server.id][0].append(addToBlacklistStr)
-		writeBlacklistsToFile()
-		await client.send_message(message.server, 'Okay! Want to add any more? Y/N')
-		newMessage = await client.wait_for_message(author=message.author, check=checkPublicYN)
-		if newMessage == 'Y':
-			await publiclySpecifyItemToRemoveFromBlacklist(client, message)
-		else: 
-			await client.send_message(message.server, 'Alright! Remember you can call what I can do with \'!help\'')
+async def publiclySpecifyItemToAddToBlacklist(client, message):
+	messageAuthor = message.author
+	serverOwner = message.server.owner
+	if serverOwner == messageAuthor:
+		await client.send_message(message.server, 'Alright! Please type the word you want to add to the blacklist.')
+		addToBlacklist = await client.wait_for_message(author=message.author)
+		addToBlacklistStr = addToBlacklist.content.upper()
+		if addToBlacklistStr not in blacklists[message.server.id][0]:
+			blacklists[message.server.id][0].append(addToBlacklistStr)
+			writeBlacklistsToFile()
+			await client.send_message(message.server, 'Okay! Want to add any more? Y/N')
+			newMessage = await client.wait_for_message(author=message.author, check=checkPublicYN)
+			if newMessage == 'Y':
+				await publiclySpecifyItemToRemoveFromBlacklist(client, message)
+			else: 
+				await client.send_message(message.server, 'Alright! Remember you can call what I can do with \'!help\'')
+		else:
+			await client.send_message(message.server, 'This word is already in the blacklist!')
 	else:
-		await client.send_message(message.server, 'This word is already in the blacklist!')
+		await client.send_message(message.server, 'Only the owner of the server can remove words from the blacklist.')
 	
 
 async def removeItemFromBlacklist(client, message):
@@ -60,7 +65,7 @@ async def addItemToBlacklist(client, message):
 	messageAuthor = message.author
 	serverOwner = message.server.owner
 	if serverOwner == messageAuthor:
-		await publiclySpecifyItemToRemoveFromBlacklist(client, message)
+		await publiclySpecifyItemToAddToBlacklist(client, message)
 	else:
 		await client.send_message(message.channel, 'Only the owner of the server can add words to the blacklist!')
 
