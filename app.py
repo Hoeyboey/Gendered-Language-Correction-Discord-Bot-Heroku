@@ -19,7 +19,28 @@ serverJoinMessages = ['I\'ve just been invited to your server! Hi! I just need t
 async def publicVagueCallout(message, client):
 	await client.send_message(message.channel, 'Please don\'t say dude or guys!')
 
-# This updates the blacklists.json file whenever it is updated - this retains the blacklists between the bot turning off and on again
+async def viewServerBlacklist(client, message):
+	currentBlacklist = blacklists[message.server.id]
+	await client.send_message(message.channel, 'The blacklist for this server is: {}'.format(currentBlacklist[0]))
+
+async def removeItemFromBlacklist(client, message):
+	messageAuthor = message.author
+	serverOwner = message.server.owner
+	if serverOwner == messageAuthor:
+		await client.send_message(message.channel, 'Okay, please type the word you want to remove from the blacklist!')
+		messageToRemove = await client.wait_for_message(author=serverOwner)
+		messageToRemoveStr = messageToRemove.content.upper()
+		print(messageToRemoveStr)
+		currentBlacklist = blacklists[message.server.id]
+		if messageToRemoveStr in currentBlacklist[0]:
+			blacklists[serverId].remove(messageToRemoveStr)
+			await client.send_message(message.channel, 'That word has now been removed!')
+		else:
+			await client.send_message(message.channel, 'Hmm. I couldn\'t find that one in your blacklist!')
+	else:
+		await client send_message(message.channel, 'Only the owner of the server can remove words from the blacklist!')
+
+#This updates the blacklists.json file whenever it is updated - this retains the blacklists between the bot turning off and on again
 def writeBlacklistsToFile():
 	fullCurrentBlacklists = json.dumps(blacklists)
 	with open('blacklists.json', 'w') as f:
@@ -54,7 +75,8 @@ async def blacklisting(client, serverOwner, serverId):
 		await client.send_message(serverOwner, 'Alright! Please type the word you want to add to the blacklist.')
 		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2)
 		addToBlacklistStr = addToBlacklist.content.upper()
-		if addToBlacklistStr not in blacklists[serverId]:
+		currentBlacklist = blacklists[serverId]
+		if addToBlacklistStr not in currentBlacklist[0]:
 			blacklists[serverId].append(addToBlacklistStr)
 			writeBlacklistsToFile()
 		else:
@@ -62,7 +84,7 @@ async def blacklisting(client, serverOwner, serverId):
 		await client.send_message(serverOwner, 'Okay! Want to add any more? Y/N')
 		await blacklisting(client, serverOwner, serverId)
 	else:
-		await client.send_message(serverOwner, 'We\'re all done then! If you want to add something new to the list, DM me with \'!help\'!')
+		await client.send_message(serverOwner, 'We\'re all done then! For help, DM me with \'!help\'!')
 	
 # All of the @client.event bits are working on events with Discord - this one works when the bot boots up and loads correctly.
 # Note - if you've added the bot to a server while this bot is offline, the on_server_join event won't activate, so in on_ready, the for loop checks if that server is already set up and, if not, will set it up to prevent errors.
@@ -77,7 +99,7 @@ async def on_ready():
 			print('Intro method')
 			serverOwner = x.owner
 			serverId = x.id
-			blacklists[serverId] = list(blacklist)
+			blacklists[serverId] = [list(blacklist), serverOwner.id]
 			writeBlacklistsToFile()
 			for message in serverJoinMessages:
 				await client.send_message(serverOwner, message)
@@ -88,15 +110,23 @@ async def on_ready():
 async def on_message(message):
 	if message.server != None:
 		if message.author.id != client.user.id:
-			for word in blacklists[str(message.server.id)]:
+			currentBlacklist = blacklists[str(message.server.id)]
+			for word in currentBlacklist[0]:
 				if word in message.content.upper():
 					await publicVagueCallout(message, client)
+			if message.content == '!remove':
+				await removeItemFromBlacklist(client, message)
+			elif message.content == '!viewblacklist':
+				await viewServerBlacklist(client, message)
+	else:
+		if message.content == '!remove':
+			await client.send_message(message.channel, 'You can\'t do this in DMs! Please type \'!remove\' into the server you want to remove a blacklisted word from!')
 
 # When the  bot joins a server, it updates the blacklist with a new key for that server, and will DM the owner of the server asking if they want to add anything else.
 @client.event
 async def on_server_join(server):
 	serverId = str(server.id)
-	blacklists[serverId] = list(blacklist)
+	blacklists[serverId] = [list(blacklist), server.owner.id]
 	writeBlacklistsToFile()
 	serverOwner = server.owner 
 	for message in serverJoinMessages:
@@ -106,3 +136,4 @@ async def on_server_join(server):
 client.run(sys.argv[1])
 
 # The actual token must be put as an argument so you can't do anything jammy with my bot. I see you.
+# blacklists.json syntax is a dictionary where the key is a server id, value is a list where index 0 is a list of the blacklisted words, index 1 is the server owner's id.
