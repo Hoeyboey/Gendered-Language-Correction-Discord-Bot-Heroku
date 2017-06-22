@@ -98,6 +98,18 @@ def check2(msg):
 	else:
 		return False
 
+async def privateHelpReply(client, message):
+	await client.send_message(message.author, 'If you\'re the owner of a server I\'m in, you can use these by typing the keyphrases in that server!')
+	await client.send_message(message.author, '!add to add a new word to the blacklist')
+	await client.send_message(message.author, '!remove to remove a word from the blacklist')
+	await client.send_message(message.author, '!view to see the current blacklist')
+
+async def publicHelpReply(client, message):
+	await client.send_message(message.server, 'If you\'re the owner of a server I\'m in, you can use these by typing the keyphrases in that server!')
+	await client.send_message(message.server, '!add to add a new word to the blacklist')
+	await client.send_message(message.server, '!remove to remove a word from the blacklist')
+	await client.send_message(message.server, '!view to see the current blacklist')
+
 # Probably the meatiest part of the program - allows you to add new words to the blacklist for your server
 async def blacklisting(client, serverOwner, serverId):
 	newMessage = await client.wait_for_message(author=serverOwner, check=check)
@@ -105,8 +117,8 @@ async def blacklisting(client, serverOwner, serverId):
 		await client.send_message(serverOwner, 'Alright! Please type the word you want to add to the blacklist.')
 		addToBlacklist = await client.wait_for_message(author=serverOwner, check=check2)
 		addToBlacklistStr = addToBlacklist.content.upper()
-		if addToBlacklistStr not in blacklists[message.server.id][0]:
-			blacklists[serverId].append(addToBlacklistStr)
+		if addToBlacklistStr not in blacklists[serverId][0]:
+			blacklists[serverId][0].append(addToBlacklistStr)
 			writeBlacklistsToFile()
 		else:
 			await client.send_message(serverOwner, 'This word is already in the blacklist!')
@@ -149,8 +161,11 @@ async def on_message(message):
 				await viewServerBlacklist(client, message)
 			elif message.content == '!add':
 				await addItemToBlacklist(client, message)
-
+			elif message.content == '!help':
+				await publicHelpReply(client, message)
 	else:
+		if message.content == '!help':
+			await privateHelpReply(client, message)
 		if message.content == '!remove':
 			await client.send_message(message.channel, 'You can\'t do this in DMs! Please type \'!remove\' into the server you want to remove a blacklisted word from!')
 
