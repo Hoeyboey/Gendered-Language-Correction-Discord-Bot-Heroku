@@ -16,7 +16,7 @@ blacklist = ['DUDE', 'DUDES', 'GUYS']
 serverJoinMessages = ['I\'ve just been invited to your server! Hi! I just need to run through some things with you!', 'First of all, we need to decide what words you want me to call out. By default, we include "dude" and "guys", but you\'re able to add any more if you want.', 'Do you want to add any more blacklisted words? Y/N']
 
 # The callout for when someone says a blacklisted word. Currently placeholder, custom responses coming SOON.
-async def publicVagueCallout(message, client):
+async def publicVagueCallout(client, message):
 	await client.send_message(message.channel, 'Gendered language sucks and alienates people, or worse. Please don\'t use it!')
 
 async def viewServerBlacklist(client, message):
@@ -29,13 +29,14 @@ async def publiclySpecifyItemToAddToBlacklist(client, message):
 	if serverOwner == messageAuthor:
 		await client.send_message(message.server, 'Alright! Please type the word you want to add to the blacklist.')
 		addToBlacklist = await client.wait_for_message(author=message.author)
+		await client.add_reaction(addToBlacklist, '✅')
 		addToBlacklistStr = addToBlacklist.content.upper()
 		if addToBlacklistStr not in blacklists[message.server.id][0]:
 			blacklists[message.server.id][0].append(addToBlacklistStr)
 			writeBlacklistsToFile()
 			await client.send_message(message.server, 'Okay! Want to add any more? Y/N')
 			newMessage = await client.wait_for_message(author=message.author, check=checkPublicYN)
-			if newMessage == 'Y':
+			if newMessage.content == 'Y':
 				await publiclySpecifyItemToRemoveFromBlacklist(client, message)
 			else: 
 				await client.send_message(message.server, 'Alright! Remember you can call what I can do with \'!help\'')
@@ -52,7 +53,6 @@ async def removeItemFromBlacklist(client, message):
 		await client.send_message(message.channel, 'Okay, please type the word you want to remove from the blacklist!')
 		messageToRemove = await client.wait_for_message(author=serverOwner)
 		messageToRemoveStr = messageToRemove.content.upper()
-		print(messageToRemoveStr)
 		if messageToRemoveStr in blacklists[message.server.id][0]:
 			blacklists[message.server.id][0].remove(messageToRemoveStr)
 			await client.send_message(message.channel, 'That word has now been removed!')
@@ -103,6 +103,26 @@ def check2(msg):
 	else:
 		return False
 
+# Assuming conditions are met, this will be called to check if the bot should be responding to something. This is partly seperated in case I want to create custom functions later down the line.
+async def checkIfCommandCalled(client, message):
+	currentBlacklist = blacklists[str(message.server.id)]
+	for word in blacklists[message.server.id][0]:
+		if word in message.content.upper() and message.reactions != None:
+			await publicVagueCallout(client, message)
+			break
+		elif message.content == '!remove':
+			await removeItemFromBlacklist(client, message)
+			break
+		elif message.content == '!view':
+			await viewServerBlacklist(client, message)
+			break
+		elif message.content == '!add':
+			await addItemToBlacklist(client, message)
+			break
+		elif message.content == '!help':
+			await publicHelpReply(client, message)
+			break
+
 async def privateHelpReply(client, message):
 	await client.send_message(message.author, 'If you\'re the owner of a server I\'m in, you can use these by typing the keyphrases in that server!')
 	await client.send_message(message.author, '!add to add a new word to the blacklist')
@@ -140,9 +160,7 @@ async def on_ready():
 	readExistingBlacklists()
 	serversCurrentlyJoined = client.servers
 	for x in serversCurrentlyJoined:
-		print(x.id)
 		if x.id not in blacklists.keys():
-			print('Intro method')
 			serverOwner = x.owner
 			serverId = x.id
 			blacklists[serverId] = [list(blacklist), serverOwner.id]
@@ -150,29 +168,6 @@ async def on_ready():
 			for message in serverJoinMessages:
 				await client.send_message(serverOwner, message)
 			await blacklisting(client, serverOwner, serverId)
-
-# This checks for if you've said a blacklisted word, running every time it sees a message.
-@client.event
-async def on_message(message):
-	if message.server != None:
-		if message.author.id != client.user.id:
-			currentBlacklist = blacklists[str(message.server.id)]
-			for word in blacklists[message.server.id][0]:
-				if word in message.content.upper():
-					await publicVagueCallout(message, client)
-			if message.content == '!remove':
-				await removeItemFromBlacklist(client, message)
-			elif message.content == '!view':
-				await viewServerBlacklist(client, message)
-			elif message.content == '!add':
-				await addItemToBlacklist(client, message)
-			elif message.content == '!help':
-				await publicHelpReply(client, message)
-	else:
-		if message.content == '!help':
-			await privateHelpReply(client, message)
-		if message.content == '!remove':
-			await client.send_message(message.channel, 'You can\'t do this in DMs! Please type \'!remove\' into the server you want to remove a blacklisted word from!')
 
 # When the  bot joins a server, it updates the blacklist with a new key for that server, and will DM the owner of the server asking if they want to add anything else.
 @client.event
@@ -185,7 +180,21 @@ async def on_server_join(server):
 		await client.send_message(serverOwner, message)
 	await blacklisting(client, serverOwner, serverId)
 
+# This checks for if you've said a blacklisted word, running every time it sees a message.
+@client.event
+async def on_message(message):
+	if message.server != None:
+		if message.author.id != client.user.id:
+			await checkIfCommandCalled(client, message)
+	else:
+		if message.content == '!help':
+			await privateHelpReply(client, message)
+		if message.content == '!remove':
+			await client.send_message(message.channel, 'You can\'t do this in DMs! Please type \'!remove\' into the server you want to remove a blacklisted word from!')
+
+
 client.run(sys.argv[1])
 
 # The actual token must be put as an argument so you can't do anything jammy with my bot. I see you.
 # blacklists.json syntax is a dictionary where the key is a server id, value is a list where index 0 is a list of the blacklisted words, index 1 is the server owner's id.
+# Bug: when it joins, it says "Alright! Remember..." when you say N to the DM.
