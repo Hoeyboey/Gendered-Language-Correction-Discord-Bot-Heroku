@@ -130,10 +130,10 @@ async def privateHelpReply(client, message):
 	await client.send_message(message.author, '!view to see the current blacklist')
 
 async def publicHelpReply(client, message):
-	await client.send_message(message.server, 'If you\'re the owner of a server I\'m in, you can use these by typing the keyphrases in that server!')
+	await client.send_message(message.server, 'Anyone in the server can type !view to see the current blacklist!')
+	await client.send_message(message.server, 'The owner of the server can use the following commands:')	
 	await client.send_message(message.server, '!add to add a new word to the blacklist')
 	await client.send_message(message.server, '!remove to remove a word from the blacklist')
-	await client.send_message(message.server, '!view to see the current blacklist')
 
 # Probably the meatiest part of the program - allows you to add new words to the blacklist for your server
 async def blacklisting(client, serverOwner, serverId):
