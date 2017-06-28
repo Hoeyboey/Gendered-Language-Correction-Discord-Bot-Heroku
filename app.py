@@ -2,9 +2,12 @@ import discord
 import asyncio
 import sys
 import json
+import os
+import redis
 
 # Creates the client object - just a key part of the wrapper I'm using for the Discord API
 client = discord.Client()
+r = redis.from_url(os.environ.get("REDIS_URL"))
 
 # This will be a dictionary of server ids/blacklisted words, just initialised early on.
 blacklists = {}
@@ -71,16 +74,22 @@ async def addItemToBlacklist(client, message):
 
 #This updates the blacklists.json file whenever it is updated - this retains the blacklists between the bot turning off and on again
 def writeBlacklistsToFile():
-	fullCurrentBlacklists = json.dumps(blacklists)
-	with open('blacklists.json', 'w') as f:
-		f.write(fullCurrentBlacklists)
+	fullCurrentBlacklistsString = json.dumps(blacklists)
+	r.set('blacklist', fullCurrentBlacklistsString)
+	# with open('blacklists.json', 'w') as f:
+	# 	f.write(fullCurrentBlacklists)
 
 # When the bot turns on, this runs to update its current blacklists dictionary with whatever is in blacklist.json
 def readExistingBlacklists():
-	with open('blacklists.json', 'r') as f:
-		unserializedBlacklists = f.read()
-	global blacklists
-	blacklists = json.loads(unserializedBlacklists)
+	fullCurrentBlacklistsString = r.get('blacklist')
+
+	# with open('blacklists.json', 'r') as f:
+	# 	unserializedBlacklists = f.read()
+	# global blacklists
+	if fullCurrentBlacklistsString == None:	
+		blacklists = {}
+	else:
+		blacklists = json.loads(fullCurrentBlacklistsString)
 
 # UGH THE NAME FOR THIS IS AWFUL but it just checks if you've said Y or N to a question that asks for Y or N, need to change it
 def check(msg):
