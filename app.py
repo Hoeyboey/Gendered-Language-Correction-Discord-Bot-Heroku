@@ -37,6 +37,7 @@ async def publiclySpecifyItemToAddToBlacklist(client, message):
 		if addToBlacklistStr not in blacklists[message.server.id][0]:
 			blacklists[message.server.id][0].append(addToBlacklistStr)
 			writeBlacklistsToFile()
+			print('writebBlacklistsToFile() worked in publiclySpecifyItemToAddToBlacklist')
 			await client.send_message(message.server, 'Okay! Want to add any more? Y/N')
 			newMessage = await client.wait_for_message(author=message.author, check=checkPublicYN)
 			if newMessage.content == 'Y':
@@ -75,6 +76,8 @@ async def addItemToBlacklist(client, message):
 #This updates the blacklists.json file whenever it is updated - this retains the blacklists between the bot turning off and on again
 def writeBlacklistsToFile():
 	fullCurrentBlacklistsString = json.dumps(blacklists)
+	print('The current fullCurrentBlacklistsString is:')
+	print(fullCurrentBlacklistsString)
 	r.set('blacklist', fullCurrentBlacklistsString)
 	# with open('blacklists.json', 'w') as f:
 	# 	f.write(fullCurrentBlacklists)
