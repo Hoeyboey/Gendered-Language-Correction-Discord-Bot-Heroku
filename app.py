@@ -179,7 +179,7 @@ async def on_ready():
 			serverOwner = x.owner
 			serverId = x.id
 			blacklists[serverId] = [list(blacklist), serverOwner.id]
-			writeBlacklistsToFile()
+			#writeBlacklistsToFile()
 			for message in serverJoinMessages:
 				await client.send_message(serverOwner, message)
 			await blacklisting(client, serverOwner, serverId)
