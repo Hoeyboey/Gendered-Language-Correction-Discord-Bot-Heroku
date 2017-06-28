@@ -170,6 +170,9 @@ async def blacklisting(client, serverOwner, serverId):
 async def on_ready():
 	print('I\'m working!')
 	readExistingBlacklists()
+	print('The redis on startup looks like this:')
+	redisOnStartup = r.get('blacklist')
+	print(redisOnStartup)
 	serversCurrentlyJoined = client.servers
 	for x in serversCurrentlyJoined:
 		if x.id not in blacklists.keys():
