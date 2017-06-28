@@ -88,7 +88,7 @@ def readExistingBlacklists():
 
 	# with open('blacklists.json', 'r') as f:
 	# 	unserializedBlacklists = f.read()
-	# global blacklists
+	global blacklists
 	if fullCurrentBlacklistsString == None:	
 		blacklists = {}
 	else:
