@@ -1,1 +1,1 @@
-worker: python app.py MzI2Njk2NjI2Mjg4NzIxOTMw.DDWDJg.W2CkUBIUkOGDg6k4cK76wSbbJYk
+worker: python app.py 
