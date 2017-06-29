@@ -50,6 +50,7 @@ async def publiclySpecifyItemToAddToBlacklist(client, message):
 	else:
 		await client.send_message(message.server, 'Only the owner of the server can remove words from the blacklist.')
 	
+
 # This is called when the server owner says !remove, allowing you to remove a word from the blacklaist
 async def removeItemFromBlacklist(client, message):
 	messageAuthor = message.author
@@ -82,6 +83,7 @@ def writeBlacklistsToFile():
 # When the bot turns on, this runs to update its current blacklists dictionary with whatever is in the Heroku redis
 def readExistingBlacklists():
 	fullCurrentBlacklistsString = r.get('blacklist')
+
 	global blacklists
 	if fullCurrentBlacklistsString == None:	
 		blacklists = {}
